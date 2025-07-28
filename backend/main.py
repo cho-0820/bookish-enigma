@@ -77,6 +77,37 @@ async def ai_feedback(text: str = Body(..., embed=True)):
         raise HTTPException(status_code=500, detail=f"AI 피드백 생성 오류: {str(e)}")
     return {"feedback": feedback}
 
+@app.post("/ai_evaluate")
+async def ai_evaluate(text: str = Body(..., embed=True)):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OpenAI API 키가 환경 변수에 없습니다.")
+    openai.api_key = api_key
+    prompt = f"""
+    아래는 학생이 쓴 글입니다. 이 글을 루브릭 기준에 따라 아래 단계 중 하나로 분류하고, 그 이유와 개선 코멘트를 작성해 주세요.
+    [단계]
+    1단계: 주제와 관련 없는 글
+    2단계: 주제와 관련 있으나 내용이 부족함
+    3단계: 주제에 맞는 내용과 근거가 충분함
+    ---
+    {text}
+    ---
+    [출력 예시]
+    단계: (1/2/3 중 하나)
+    코멘트: (간단한 평가 및 개선점)
+    """
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300,
+            temperature=0.7
+        )
+        result = response.choices[0].message.content.strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 평가 생성 오류: {str(e)}")
+    return {"evaluation": result}
+
 @app.get("/")
 def read_root():
     return {"message": "Hello, AI 학생 글 평가 시스템!"} 
