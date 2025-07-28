@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body
 from fastapi.responses import JSONResponse
 import os
 
@@ -6,6 +6,9 @@ import os
 from PIL import Image
 import pytesseract
 import io
+
+# OpenAI API import
+import openai
 
 app = FastAPI()
 
@@ -48,6 +51,31 @@ async def ocr_upload(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR 처리 중 오류 발생: {str(e)}")
     return {"ocr_text": text.strip()}
+
+@app.post("/ai_feedback")
+async def ai_feedback(text: str = Body(..., embed=True)):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OpenAI API 키가 환경 변수에 없습니다.")
+    openai.api_key = api_key
+    prompt = f"""
+    아래는 학생이 쓴 글입니다. 이 글을 읽고 학생의 생각을 확장시켜줄 수 있는 질문 또는 코칭을 2개 생성해 주세요. 각 항목은 번호로 구분해 주세요.
+    ---
+    {text}
+    ---
+    질문/코칭:
+    """
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300,
+            temperature=0.7
+        )
+        feedback = response.choices[0].message.content.strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 피드백 생성 오류: {str(e)}")
+    return {"feedback": feedback}
 
 @app.get("/")
 def read_root():
