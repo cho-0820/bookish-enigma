@@ -8,6 +8,12 @@ class DatabaseManager:
         self.db_path = db_path
         self.init_database()
     
+    def get_connection(self):
+        """row_factory가 설정된 데이터베이스 연결을 반환합니다."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+    
     def init_database(self):
         """데이터베이스 테이블 초기화"""
         conn = sqlite3.connect(self.db_path)
@@ -29,23 +35,32 @@ class DatabaseManager:
         )
         ''')
         
+        # 새로운 평가 기준 테이블 추가
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS evaluation_criteria (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         conn.commit()
         conn.close()
+        print("✅ 데이터베이스 테이블 초기화 완료")
     
-    def save_submission(self, student_id: str, original_text: str, revised_text: str) -> int:
-        """2차 제출 저장"""
+    def save_submission(self, student_id: str, ocr_text: str = None, revised_text: str = None, ai_stage: int = 1) -> int:
+        """제출 내역 저장 (유연한 파라미터 버전)"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
-        INSERT INTO submissions (student_id, ocr_text, revised_text, submit_time)
-        VALUES (?, ?, ?, ?)
-        ''', (student_id, original_text, revised_text, datetime.now().isoformat()))
+        INSERT INTO submissions (student_id, ocr_text, revised_text, ai_stage, submit_time)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (student_id, ocr_text, revised_text, ai_stage, datetime.now()))
         
         submission_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
         return submission_id
     
     def update_ai_feedback(self, submission_id: int, ai_feedback: str):
@@ -54,77 +69,142 @@ class DatabaseManager:
         cursor = conn.cursor()
         
         cursor.execute('''
-        UPDATE submissions SET ai_feedback = ?, update_time = ?
+        UPDATE submissions 
+        SET ai_feedback = ?, ai_stage = 2, update_time = ?
         WHERE id = ?
-        ''', (ai_feedback, datetime.now().isoformat(), submission_id))
+        ''', (ai_feedback, datetime.now(), submission_id))
         
         conn.commit()
         conn.close()
     
-    def update_ai_evaluation(self, submission_id: int, ai_evaluation: str, ai_stage: int):
-        """AI 평가 결과 업데이트"""
+    def update_ai_evaluation(self, submission_id: int, ai_evaluation: str, ai_stage: int = 3):
+        """AI 최종 평가 업데이트"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
-        UPDATE submissions SET ai_evaluation = ?, ai_stage = ?, update_time = ?
+        UPDATE submissions 
+        SET ai_evaluation = ?, ai_stage = ?, update_time = ?
         WHERE id = ?
-        ''', (ai_evaluation, ai_stage, datetime.now().isoformat(), submission_id))
+        ''', (ai_evaluation, ai_stage, datetime.now(), submission_id))
         
         conn.commit()
         conn.close()
     
-    def get_student_submissions(self, student_id: str) -> List[Dict]:
-        """학생별 제출 내역 조회"""
-        conn = sqlite3.connect(self.db_path)
+    def get_all_submissions(self):
+        """모든 제출 내역 조회"""
+        conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT * FROM submissions WHERE student_id = ?
-        ORDER BY submit_time DESC
-        ''', (student_id,))
-        
-        columns = [description[0] for description in cursor.description]
-        results = []
-        for row in cursor.fetchall():
-            results.append(dict(zip(columns, row)))
-        
+        cursor.execute("SELECT * FROM submissions ORDER BY submit_time DESC")
+        rows = cursor.fetchall()
         conn.close()
-        return results
+        
+        # Row 객체를 딕셔너리로 변환
+        return [dict(row) for row in rows]
     
-    def get_all_submissions(self) -> List[Dict]:
-        """모든 제출 내역 조회 (교사용)"""
-        conn = sqlite3.connect(self.db_path)
+    def get_submission_by_id(self, submission_id: int):
+        """ID로 특정 제출 내역 조회"""
+        conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT * FROM submissions
-        ORDER BY submit_time DESC
-        ''')
-        
-        columns = [description[0] for description in cursor.description]
-        results = []
-        for row in cursor.fetchall():
-            results.append(dict(zip(columns, row)))
-        
-        conn.close()
-        return results
-    
-    def get_submission_by_id(self, submission_id: int) -> Optional[Dict]:
-        """ID로 특정 제출 조회"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT * FROM submissions WHERE id = ?
-        ''', (submission_id,))
-        
+        cursor.execute("SELECT * FROM submissions WHERE id = ?", (submission_id,))
         row = cursor.fetchone()
-        if row:
-            columns = [description[0] for description in cursor.description]
-            result = dict(zip(columns, row))
-        else:
-            result = None
-        
         conn.close()
-        return result 
+        
+        if row:
+            return dict(row)
+        return None
+
+    # === 평가 기준 관련 메서드들 ===
+
+    def save_criteria(self, title, description):
+        """새로운 평가 기준을 저장합니다."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO evaluation_criteria (title, description, created_at) VALUES (?, ?, ?)",
+                (title, description, datetime.now())
+            )
+            criteria_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            print(f"✅ 평가 기준 저장 완료: ID={criteria_id}, 제목={title}")
+            return criteria_id
+        except Exception as e:
+            print(f"❌ 평가 기준 저장 오류: {e}")
+            raise e
+
+    def get_all_criteria(self):
+        """모든 평가 기준을 조회합니다."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, title, description, created_at FROM evaluation_criteria ORDER BY created_at DESC")
+            rows = cursor.fetchall()
+            conn.close()
+            
+            # Row 객체를 딕셔너리로 변환
+            criteria_list = []
+            for row in rows:
+                criteria_list.append({
+                    'id': row['id'],
+                    'title': row['title'],
+                    'description': row['description'],
+                    'created_at': row['created_at']
+                })
+            
+            print(f"✅ 평가 기준 조회 완료: {len(criteria_list)}개")
+            return criteria_list
+        except Exception as e:
+            print(f"❌ 평가 기준 조회 오류: {e}")
+            return []
+
+    def get_criteria_by_id(self, criteria_id):
+        """ID로 특정 평가 기준을 조회합니다."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, title, description, created_at FROM evaluation_criteria WHERE id=?", (criteria_id,))
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                return {
+                    'id': row['id'],
+                    'title': row['title'],
+                    'description': row['description'],
+                    'created_at': row['created_at']
+                }
+            return None
+        except Exception as e:
+            print(f"❌ 평가 기준 조회 오류: {e}")
+            return None
+
+    def delete_criteria(self, criteria_id):
+        """평가 기준을 삭제합니다."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM evaluation_criteria WHERE id=?", (criteria_id,))
+            conn.commit()
+            conn.close()
+            print(f"✅ 평가 기준 삭제 완료: ID={criteria_id}")
+        except Exception as e:
+            print(f"❌ 평가 기준 삭제 오류: {e}")
+            raise e
+
+    def update_criteria(self, criteria_id, title, description):
+        """평가 기준을 수정합니다."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE evaluation_criteria SET title=?, description=? WHERE id=?",
+                (title, description, criteria_id)
+            )
+            conn.commit()
+            conn.close()
+            print(f"✅ 평가 기준 수정 완료: ID={criteria_id}, 제목={title}")
+        except Exception as e:
+            print(f"❌ 평가 기준 수정 오류: {e}")
+            raise e 

@@ -206,6 +206,58 @@
         .progress-icon.pending {
             background: #ccc;
         }
+        
+        /* 평가 기준 스타일 */
+        .evaluation-criteria, .default-criteria {
+            background: #f8f9fc;
+            border: 2px solid #e1e5f7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .criteria-preview {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .criteria-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .criteria-title {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .criteria-desc {
+            display: block;
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .criteria-info {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        
+        .criteria-count {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -299,6 +351,48 @@
                     <div class="step-number">4</div>
                     <div class="step-title">AI 최종 평가</div>
                 </div>
+                
+                <!-- 평가 기준 미리보기 -->
+                <div class="evaluation-criteria" id="evaluationCriteria" style="display: none;">
+                    <h4 style="color: #667eea; margin-bottom: 15px;">📋 평가 기준</h4>
+                    <div id="criteriaList" class="criteria-preview">
+                        <!-- 평가 기준들이 여기에 표시됩니다 -->
+                    </div>
+                    <div class="criteria-info">
+                        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">
+                            💡 위 기준들을 바탕으로 AI가 맞춤형 평가를 제공합니다.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 기본 평가 기준 안내 -->
+                <div class="default-criteria" id="defaultCriteria" style="display: none;">
+                    <h4 style="color: #667eea; margin-bottom: 15px;">📋 기본 평가 기준</h4>
+                    <div class="criteria-preview">
+                        <div class="criteria-item">
+                            <span class="criteria-title">내용과 주제 (30점)</span>
+                            <span class="criteria-desc">글의 내용이 충실하고 주제가 명확한가?</span>
+                        </div>
+                        <div class="criteria-item">
+                            <span class="criteria-title">논리성과 구성 (25점)</span>
+                            <span class="criteria-desc">글의 구성이 논리적이고 체계적인가?</span>
+                        </div>
+                        <div class="criteria-item">
+                            <span class="criteria-title">언어 표현 (25점)</span>
+                            <span class="criteria-desc">어휘 선택과 문장 구성이 적절한가?</span>
+                        </div>
+                        <div class="criteria-item">
+                            <span class="criteria-title">창의성 (20점)</span>
+                            <span class="criteria-desc">독창적이고 참신한 관점이 있는가?</span>
+                        </div>
+                    </div>
+                    <div class="criteria-info">
+                        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">
+                            💡 교사가 설정한 맞춤 기준이 없어 기본 평가 기준을 사용합니다.
+                        </p>
+                    </div>
+                </div>
+                
                 <button class="btn" id="evaluateBtn" disabled>🎯 최종 평가 받기</button>
                 <div id="evaluateResult" class="result" style="display: none;"></div>
                 <div id="evaluateLoading" class="loading">🎯 AI가 최종 평가하는 중...</div>
@@ -314,7 +408,8 @@
             revisedText: '',
             aiFeedback: '',
             aiEvaluation: '',
-            submissionId: null
+            submissionId: null,
+            evaluationCriteria: []
         };
 
         // 진행 상황 업데이트
@@ -322,6 +417,55 @@
             const icon = document.getElementById(`step${stepNumber}-icon`);
             icon.className = `progress-icon ${status}`;
         }
+
+        // 평가 기준 불러오기
+        async function loadEvaluationCriteria() {
+            try {
+                const response = await fetch(`${API_BASE}/criteria`);
+                const data = await response.json();
+                
+                if (response.ok && data.length > 0) {
+                    currentData.evaluationCriteria = data;
+                    displayCustomCriteria(data);
+                } else {
+                    displayDefaultCriteria();
+                }
+            } catch (error) {
+                console.log('평가 기준 불러오기 실패, 기본 기준 사용:', error);
+                displayDefaultCriteria();
+            }
+        }
+
+        // 맞춤 평가 기준 표시
+        function displayCustomCriteria(criteria) {
+            const criteriaList = document.getElementById('criteriaList');
+            const evaluationCriteria = document.getElementById('evaluationCriteria');
+            const defaultCriteria = document.getElementById('defaultCriteria');
+            
+            criteriaList.innerHTML = criteria.map(criterion => `
+                <div class="criteria-item">
+                    <span class="criteria-title">${criterion.title}</span>
+                    <span class="criteria-desc">${criterion.description}</span>
+                </div>
+            `).join('');
+            
+            evaluationCriteria.style.display = 'block';
+            defaultCriteria.style.display = 'none';
+        }
+
+        // 기본 평가 기준 표시
+        function displayDefaultCriteria() {
+            const evaluationCriteria = document.getElementById('evaluationCriteria');
+            const defaultCriteria = document.getElementById('defaultCriteria');
+            
+            evaluationCriteria.style.display = 'none';
+            defaultCriteria.style.display = 'block';
+        }
+
+        // 페이지 로드 시 평가 기준 불러오기
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEvaluationCriteria();
+        });
 
         // 결과 표시 함수
         function showResult(elementId, message, type = 'info') {
@@ -491,7 +635,13 @@
                 
                 if (response.ok) {
                     currentData.aiEvaluation = data.evaluation;
-                    showResult('evaluateResult', `🎯 <strong>AI 최종 평가:</strong><br><br>${data.evaluation}`, 'success');
+                    
+                    // 평가 기준 정보 추가
+                    const criteriaInfo = data.criteria_count > 0 
+                        ? `<div style="margin-bottom: 15px; color: #667eea;"><span class="criteria-count">${data.criteria_count}개 맞춤 기준</span> 적용된 평가 결과</div>`
+                        : `<div style="margin-bottom: 15px; color: #666;"><span class="criteria-count">기본 기준</span> 적용된 평가 결과</div>`;
+                    
+                    showResult('evaluateResult', `🎯 <strong>AI 최종 평가:</strong><br>${criteriaInfo}<br>${data.evaluation}`, 'success');
                     
                     updateProgress(4, 'completed');
                 } else {

@@ -2,78 +2,93 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>AI 학생 글 평가 시스템 - 테스트</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 학생 글 평가 시스템</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
-        input, button, textarea { margin: 8px 0; width: 100%; }
-        .result { background: #f8f8f8; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 50px 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-10px);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            color: #4a4a4a;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: white;
+            border-radius: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn.teacher {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            box-shadow: 0 10px 20px rgba(255, 154, 158, 0.3);
+        }
+        
+        .btn.teacher:hover {
+             box-shadow: 0 15px 30px rgba(255, 154, 158, 0.4);
+        }
+
     </style>
 </head>
 <body>
-    <h1>AI 학생 글 평가 시스템<br>테스트 페이지</h1>
-
-    <h2>1. 사진 업로드 & OCR</h2>
-    <form id="ocrForm">
-        <input type="file" id="ocrFile" accept=".jpg,.jpeg,.png" required><br>
-        <button type="submit">OCR 추출</button>
-    </form>
-    <div id="ocrResult" class="result"></div>
-
-    <h2>2. AI 피드백 생성</h2>
-    <textarea id="aiText" rows="5" placeholder="학생 글을 입력하세요..."></textarea><br>
-    <button id="aiBtn">AI 피드백 요청</button>
-    <div id="aiResult" class="result"></div>
-
-    <script>
-    // OCR 업로드
-    document.getElementById('ocrForm').onsubmit = async function(e) {
-        e.preventDefault();
-        const file = document.getElementById('ocrFile').files[0];
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('file', file);
-        document.getElementById('ocrResult').innerText = '처리 중...';
-        try {
-            const res = await fetch('http://127.0.0.1:8000/ocr_upload', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (res.ok) {
-                document.getElementById('ocrResult').innerText = data.ocr_text || '(텍스트 없음)';
-                document.getElementById('aiText').value = data.ocr_text || '';
-            } else {
-                document.getElementById('ocrResult').innerText = data.detail || '오류';
-            }
-        } catch (err) {
-            document.getElementById('ocrResult').innerText = '서버 연결 오류';
-        }
-    };
-
-    // AI 피드백
-    document.getElementById('aiBtn').onclick = async function() {
-        const text = document.getElementById('aiText').value;
-        if (!text.trim()) {
-            document.getElementById('aiResult').innerText = '텍스트를 입력하세요.';
-            return;
-        }
-        document.getElementById('aiResult').innerText = 'AI 피드백 생성 중...';
-        try {
-            const res = await fetch('http://127.0.0.1:8000/ai_feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                document.getElementById('aiResult').innerText = data.feedback || '(결과 없음)';
-            } else {
-                document.getElementById('aiResult').innerText = data.detail || '오류';
-            }
-        } catch (err) {
-            document.getElementById('aiResult').innerText = '서버 연결 오류';
-        }
-    };
-    </script>
+    <div class="container">
+        <h1>🎓<br>AI 글 평가 시스템</h1>
+        <p>AI의 도움으로 글쓰기 능력을 향상시키고<br>체계적인 피드백을 받아보세요.</p>
+        <div class="button-group">
+            <a href="student.html" class="btn">학생용 페이지</a>
+            <a href="teacher.html" class="btn teacher">교사용 페이지</a>
+        </div>
+    </div>
 </body>
 </html> 
