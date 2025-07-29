@@ -1,0 +1,32 @@
+name: Lint and Create Issue
+
+on: [push]  # 코드 push될 때마다 실행
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 저장소 체크아웃
+      - uses: actions/checkout@v3
+
+      # 2. Python 환경 세팅
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 3. 린터 설치
+      - run: pip install flake8
+
+      # 4. 린트 실행
+      - run: flake8 . || echo "Lint errors found" > lint_errors.txt
+
+      # 5. 린트 에러 있으면 Issue 생성
+      - name: Create Issue if lint errors exist
+        if: failure()
+        uses: dacbd/create-issue-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "Lint errors detected"
+          body: |
+            Lint errors detected in the latest push.
+            Please review and fix.
