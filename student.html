@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 AI 글 평가 시스템 - 학생</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .step {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #f0f0f0;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .step:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .step-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="text"], input[type="file"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="text"]:focus, input[type="file"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .result.info {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #dee2e6;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+        }
+        
+        .progress {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .progress-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .progress-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .progress-icon.active {
+            background: #667eea;
+        }
+        
+        .progress-icon.completed {
+            background: #28a745;
+        }
+        
+        .progress-icon.pending {
+            background: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 AI 글 평가 시스템</h1>
+            <p>사진을 업로드하고 AI의 도움으로 글을 향상시켜보세요!</p>
+        </div>
+        
+        <div class="content">
+            <!-- 진행 상황 표시 -->
+            <div class="progress">
+                <div class="progress-item">
+                    <div class="progress-icon pending" id="step1-icon">1</div>
+                    <div>사진 업로드</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-icon pending" id="step2-icon">2</div>
+                    <div>AI 피드백</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-icon pending" id="step3-icon">3</div>
+                    <div>글 수정</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-icon pending" id="step4-icon">4</div>
+                    <div>최종 평가</div>
+                </div>
+            </div>
+            
+            <!-- 학생 정보 -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">👤</div>
+                    <div class="step-title">학생 정보</div>
+                </div>
+                <div class="form-group">
+                    <label for="studentId">학생 ID</label>
+                    <input type="text" id="studentId" placeholder="학생 ID를 입력하세요 (예: 홍길동, student001)" value="student001">
+                </div>
+            </div>
+            
+            <!-- 1단계: 사진 업로드 -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">글이 적힌 사진 업로드</div>
+                </div>
+                <div class="form-group">
+                    <label for="photoFile">사진 파일 선택 (JPG, PNG, 10MB 이하)</label>
+                    <input type="file" id="photoFile" accept=".jpg,.jpeg,.png">
+                </div>
+                <button class="btn" id="uploadBtn">📷 사진에서 글 추출하기</button>
+                <div id="ocrResult" class="result" style="display: none;"></div>
+                <div id="ocrLoading" class="loading">📄 사진에서 글을 추출하는 중...</div>
+            </div>
+            
+            <!-- 2단계: AI 피드백 -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">추출된 글 확인 및 AI 피드백</div>
+                </div>
+                <div class="form-group">
+                    <label for="extractedText">추출된 글 (필요시 수정하세요)</label>
+                    <textarea id="extractedText" placeholder="사진에서 추출된 글이 여기에 표시됩니다"></textarea>
+                </div>
+                <button class="btn" id="feedbackBtn" disabled>🤖 AI 피드백 받기</button>
+                <div id="feedbackResult" class="result" style="display: none;"></div>
+                <div id="feedbackLoading" class="loading">🤖 AI가 피드백을 생성하는 중...</div>
+            </div>
+            
+            <!-- 3단계: 글 수정 -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">AI 피드백을 참고하여 글 수정</div>
+                </div>
+                <div class="form-group">
+                    <label for="revisedText">수정된 글</label>
+                    <textarea id="revisedText" placeholder="AI 피드백을 참고하여 글을 수정하세요"></textarea>
+                </div>
+                <button class="btn" id="submitBtn" disabled>📝 수정된 글 제출하기</button>
+                <div id="submitResult" class="result" style="display: none;"></div>
+                <div id="submitLoading" class="loading">📝 글을 제출하는 중...</div>
+            </div>
+            
+            <!-- 4단계: 최종 평가 -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">4</div>
+                    <div class="step-title">AI 최종 평가</div>
+                </div>
+                <button class="btn" id="evaluateBtn" disabled>🎯 최종 평가 받기</button>
+                <div id="evaluateResult" class="result" style="display: none;"></div>
+                <div id="evaluateLoading" class="loading">🎯 AI가 최종 평가하는 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        let currentData = {
+            studentId: '',
+            originalText: '',
+            revisedText: '',
+            aiFeedback: '',
+            aiEvaluation: ''
+        };
+
+        // 진행 상황 업데이트
+        function updateProgress(stepNumber, status) {
+            const icon = document.getElementById(`step${stepNumber}-icon`);
+            icon.className = `progress-icon ${status}`;
+        }
+
+        // 결과 표시 함수
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.innerHTML = message;
+            element.style.display = 'block';
+        }
+
+        // 로딩 표시 함수
+        function showLoading(loadingId, show = true) {
+            document.getElementById(loadingId).style.display = show ? 'block' : 'none';
+        }
+
+        // 1단계: 사진 업로드 및 OCR
+        document.getElementById('uploadBtn').addEventListener('click', async function() {
+            const file = document.getElementById('photoFile').files[0];
+            const studentId = document.getElementById('studentId').value.trim();
+            
+            if (!file) {
+                showResult('ocrResult', '❌ 사진 파일을 선택해주세요.', 'error');
+                return;
+            }
+            
+            if (!studentId) {
+                showResult('ocrResult', '❌ 학생 ID를 입력해주세요.', 'error');
+                return;
+            }
+            
+            currentData.studentId = studentId;
+            showLoading('ocrLoading', true);
+            updateProgress(1, 'active');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${API_BASE}/ocr_upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showLoading('ocrLoading', false);
+                
+                if (response.ok) {
+                    currentData.originalText = data.ocr_text || '';
+                    document.getElementById('extractedText').value = currentData.originalText;
+                    document.getElementById('revisedText').value = currentData.originalText;
+                    
+                    showResult('ocrResult', `✅ 글 추출이 완료되었습니다!<br><br><strong>추출된 내용:</strong><br>${currentData.originalText || '(텍스트가 감지되지 않았습니다. 직접 입력해주세요.)'}`, 'success');
+                    
+                    updateProgress(1, 'completed');
+                    document.getElementById('feedbackBtn').disabled = false;
+                } else {
+                    showResult('ocrResult', `❌ ${data.detail}`, 'error');
+                    updateProgress(1, 'pending');
+                }
+            } catch (error) {
+                showLoading('ocrLoading', false);
+                showResult('ocrResult', '❌ 서버 연결 오류가 발생했습니다.', 'error');
+                updateProgress(1, 'pending');
+            }
+        });
+
+        // 2단계: AI 피드백
+        document.getElementById('feedbackBtn').addEventListener('click', async function() {
+            const text = document.getElementById('extractedText').value.trim();
+            
+            if (!text) {
+                showResult('feedbackResult', '❌ 글 내용을 입력해주세요.', 'error');
+                return;
+            }
+            
+            currentData.originalText = text;
+            showLoading('feedbackLoading', true);
+            updateProgress(2, 'active');
+            
+            try {
+                const response = await fetch(`${API_BASE}/ai_feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                
+                const data = await response.json();
+                showLoading('feedbackLoading', false);
+                
+                if (response.ok) {
+                    currentData.aiFeedback = data.feedback;
+                    showResult('feedbackResult', `🤖 <strong>AI 피드백:</strong><br><br>${data.feedback}`, 'info');
+                    
+                    updateProgress(2, 'completed');
+                    document.getElementById('submitBtn').disabled = false;
+                } else {
+                    showResult('feedbackResult', `❌ ${data.detail}`, 'error');
+                    updateProgress(2, 'pending');
+                }
+            } catch (error) {
+                showLoading('feedbackLoading', false);
+                showResult('feedbackResult', '❌ 서버 연결 오류가 발생했습니다.', 'error');
+                updateProgress(2, 'pending');
+            }
+        });
+
+        // 3단계: 글 수정 제출
+        document.getElementById('submitBtn').addEventListener('click', async function() {
+            const revisedText = document.getElementById('revisedText').value.trim();
+            
+            if (!revisedText) {
+                showResult('submitResult', '❌ 수정된 글을 입력해주세요.', 'error');
+                return;
+            }
+            
+            currentData.revisedText = revisedText;
+            showLoading('submitLoading', true);
+            updateProgress(3, 'active');
+            
+            try {
+                const response = await fetch(`${API_BASE}/submit_revision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        student_id: currentData.studentId,
+                        original_text: currentData.originalText,
+                        revised_text: currentData.revisedText
+                    })
+                });
+                
+                const data = await response.json();
+                showLoading('submitLoading', false);
+                
+                if (response.ok) {
+                    showResult('submitResult', `✅ ${data.message}<br>제출 ID: ${data.submission_id}`, 'success');
+                    
+                    updateProgress(3, 'completed');
+                    document.getElementById('evaluateBtn').disabled = false;
+                } else {
+                    showResult('submitResult', `❌ ${data.detail}`, 'error');
+                    updateProgress(3, 'pending');
+                }
+            } catch (error) {
+                showLoading('submitLoading', false);
+                showResult('submitResult', '❌ 서버 연결 오류가 발생했습니다.', 'error');
+                updateProgress(3, 'pending');
+            }
+        });
+
+        // 4단계: 최종 평가
+        document.getElementById('evaluateBtn').addEventListener('click', async function() {
+            showLoading('evaluateLoading', true);
+            updateProgress(4, 'active');
+            
+            try {
+                const response = await fetch(`${API_BASE}/ai_evaluate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: currentData.revisedText })
+                });
+                
+                const data = await response.json();
+                showLoading('evaluateLoading', false);
+                
+                if (response.ok) {
+                    currentData.aiEvaluation = data.evaluation;
+                    showResult('evaluateResult', `🎯 <strong>AI 최종 평가:</strong><br><br>${data.evaluation}`, 'success');
+                    
+                    updateProgress(4, 'completed');
+                } else {
+                    showResult('evaluateResult', `❌ ${data.detail}`, 'error');
+                    updateProgress(4, 'pending');
+                }
+            } catch (error) {
+                showLoading('evaluateLoading', false);
+                showResult('evaluateResult', '❌ 서버 연결 오류가 발생했습니다.', 'error');
+                updateProgress(4, 'pending');
+            }
+        });
+
+        // 텍스트 입력시 자동으로 버튼 활성화
+        document.getElementById('extractedText').addEventListener('input', function() {
+            const hasText = this.value.trim().length > 0;
+            document.getElementById('feedbackBtn').disabled = !hasText;
+        });
+
+        document.getElementById('revisedText').addEventListener('input', function() {
+            const hasText = this.value.trim().length > 0;
+            document.getElementById('submitBtn').disabled = !hasText;
+        });
+    </script>
+</body>
+</html> 

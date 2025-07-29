@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 학생 글 평가 시스템 - 전체 플로우 테스트</title>
+    <style>
+        body { font-family: sans-serif; max-width: 700px; margin: 40px auto; }
+        input, button, textarea { margin: 8px 0; width: 100%; }
+        .result { background: #f8f8f8; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .section { border-bottom: 1px solid #ddd; padding-bottom: 20px; margin-bottom: 20px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>AI 학생 글 평가 시스템<br>전체 플로우 테스트</h1>
+
+    <div class="section">
+        <h2>0. 학생 정보</h2>
+        <input type="text" id="studentId" placeholder="학생 ID를 입력하세요 (예: student001)" value="student001">
+    </div>
+
+    <div class="section">
+        <h2>1. 사진 업로드 & OCR</h2>
+        <form id="ocrForm">
+            <input type="file" id="ocrFile" accept=".jpg,.jpeg,.png" required><br>
+            <button type="submit">OCR 추출</button>
+        </form>
+        <div id="ocrResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. AI 피드백 확인</h2>
+        <textarea id="originalText" rows="5" placeholder="OCR로 추출된 원본 텍스트"></textarea><br>
+        <button id="aiFeedbackBtn">AI 피드백 받기</button>
+        <div id="aiFeedbackResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. 글 수정 및 2차 제출</h2>
+        <textarea id="revisedText" rows="5" placeholder="피드백을 참고하여 글을 수정하세요"></textarea><br>
+        <button id="submitRevisionBtn">2차 제출하기</button>
+        <div id="submitResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. AI 최종 평가</h2>
+        <button id="aiEvaluateBtn">최종 평가 받기</button>
+        <div id="evaluateResult" class="result"></div>
+    </div>
+
+    <script>
+    let originalText = '';
+    let revisedText = '';
+    const studentId = () => document.getElementById('studentId').value || 'student001';
+
+    // OCR 업로드
+    document.getElementById('ocrForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const file = document.getElementById('ocrFile').files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        document.getElementById('ocrResult').innerText = '처리 중...';
+        
+        try {
+            const res = await fetch('http://127.0.0.1:8000/ocr_upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                originalText = data.ocr_text || '';
+                document.getElementById('ocrResult').innerHTML = `<strong>OCR 결과:</strong><br>${originalText || '(텍스트 없음)'}`;
+                document.getElementById('originalText').value = originalText;
+                document.getElementById('revisedText').value = originalText; // 수정용 텍스트에도 복사
+            } else {
+                document.getElementById('ocrResult').className = 'result error';
+                document.getElementById('ocrResult').innerText = data.detail || '오류';
+            }
+        } catch (err) {
+            document.getElementById('ocrResult').className = 'result error';
+            document.getElementById('ocrResult').innerText = '서버 연결 오류';
+        }
+    };
+
+    // AI 피드백
+    document.getElementById('aiFeedbackBtn').onclick = async function() {
+        const text = document.getElementById('originalText').value;
+        if (!text.trim()) {
+            document.getElementById('aiFeedbackResult').className = 'result error';
+            document.getElementById('aiFeedbackResult').innerText = '텍스트를 입력하세요.';
+            return;
+        }
+        
+        document.getElementById('aiFeedbackResult').className = 'result';
+        document.getElementById('aiFeedbackResult').innerText = 'AI 피드백 생성 중...';
+        
+        try {
+            const res = await fetch('http://127.0.0.1:8000/ai_feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('aiFeedbackResult').innerHTML = `<strong>AI 피드백:</strong><br>${data.feedback || '(결과 없음)'}`;
+            } else {
+                document.getElementById('aiFeedbackResult').className = 'result error';
+                document.getElementById('aiFeedbackResult').innerText = data.detail || '오류';
+            }
+        } catch (err) {
+            document.getElementById('aiFeedbackResult').className = 'result error';
+            document.getElementById('aiFeedbackResult').innerText = '서버 연결 오류';
+        }
+    };
+
+    // 2차 제출
+    document.getElementById('submitRevisionBtn').onclick = async function() {
+        const original = document.getElementById('originalText').value;
+        const revised = document.getElementById('revisedText').value;
+        const student = studentId();
+        
+        if (!original.trim() || !revised.trim()) {
+            document.getElementById('submitResult').className = 'result error';
+            document.getElementById('submitResult').innerText = '원본 텍스트와 수정된 텍스트를 모두 입력하세요.';
+            return;
+        }
+        
+        document.getElementById('submitResult').className = 'result';
+        document.getElementById('submitResult').innerText = '제출 중...';
+        
+        try {
+            const res = await fetch('http://127.0.0.1:8000/submit_revision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    student_id: student,
+                    original_text: original, 
+                    revised_text: revised 
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                revisedText = revised;
+                document.getElementById('submitResult').className = 'result success';
+                document.getElementById('submitResult').innerHTML = `<strong>${data.message}</strong><br>제출 ID: ${data.submission_id}<br>제출 시간: ${data.submit_time}`;
+            } else {
+                document.getElementById('submitResult').className = 'result error';
+                document.getElementById('submitResult').innerText = data.detail || '오류';
+            }
+        } catch (err) {
+            document.getElementById('submitResult').className = 'result error';
+            document.getElementById('submitResult').innerText = '서버 연결 오류';
+        }
+    };
+
+    // AI 평가
+    document.getElementById('aiEvaluateBtn').onclick = async function() {
+        const text = document.getElementById('revisedText').value;
+        if (!text.trim()) {
+            document.getElementById('evaluateResult').className = 'result error';
+            document.getElementById('evaluateResult').innerText = '수정된 텍스트가 없습니다. 먼저 2차 제출을 완료하세요.';
+            return;
+        }
+        
+        document.getElementById('evaluateResult').className = 'result';
+        document.getElementById('evaluateResult').innerText = 'AI 평가 중...';
+        
+        try {
+            const res = await fetch('http://127.0.0.1:8000/ai_evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('evaluateResult').innerHTML = `<strong>AI 최종 평가:</strong><br>${data.evaluation || '(결과 없음)'}`;
+            } else {
+                document.getElementById('evaluateResult').className = 'result error';
+                document.getElementById('evaluateResult').innerText = data.detail || '오류';
+            }
+        } catch (err) {
+            document.getElementById('evaluateResult').className = 'result error';
+            document.getElementById('evaluateResult').innerText = '서버 연결 오류';
+        }
+    };
+    </script>
+</body>
+</html> 

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏫 AI 글 평가 시스템 - 교사 대시보드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #f093fb;
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(240, 147, 251, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .submissions-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .stage-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .stage-1 { background: #dc3545; }
+        .stage-2 { background: #ffc107; color: #333; }
+        .stage-3 { background: #28a745; }
+        .stage-unknown { background: #6c757d; }
+        
+        .detail-btn {
+            background: none;
+            border: 1px solid #f093fb;
+            color: #f093fb;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .detail-btn:hover {
+            background: #f093fb;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 30px;
+        }
+        
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            opacity: 0.7;
+        }
+        
+        .detail-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .detail-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .detail-content {
+            line-height: 1.6;
+            color: #555;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #f093fb;
+            font-size: 1.1rem;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1rem;
+        }
+        
+        .timestamp {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 0.9rem;
+            }
+            
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏫 AI 글 평가 시스템</h1>
+            <p>교사 대시보드 - 학생들의 제출 내역을 확인하세요</p>
+        </div>
+        
+        <div class="content">
+            <!-- 컨트롤 -->
+            <div class="controls">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="학생 ID로 검색...">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <button class="btn" id="refreshBtn">🔄 새로고침</button>
+                <button class="btn btn-secondary" id="exportBtn">📊 데이터 내보내기</button>
+            </div>
+            
+            <!-- 통계 -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalSubmissions">-</div>
+                    <div class="stat-label">총 제출 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="uniqueStudents">-</div>
+                    <div class="stat-label">참여 학생 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="averageStage">-</div>
+                    <div class="stat-label">평균 단계</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todaySubmissions">-</div>
+                    <div class="stat-label">오늘 제출</div>
+                </div>
+            </div>
+            
+            <!-- 제출 내역 테이블 -->
+            <div class="submissions-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>학생 ID</th>
+                            <th>제출 시간</th>
+                            <th>AI 단계</th>
+                            <th>원본 글</th>
+                            <th>수정된 글</th>
+                            <th>상세 보기</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissionsTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">📚 데이터를 불러오는 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상세 보기 모달 -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">제출 상세 내역</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- 상세 내용이 여기에 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        let allSubmissions = [];
+        let filteredSubmissions = [];
+
+        // 페이지 로드시 데이터 불러오기
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSubmissions();
+        });
+
+        // 제출 내역 불러오기
+        async function loadSubmissions() {
+            try {
+                const response = await fetch(`${API_BASE}/teacher/submissions`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    allSubmissions = data.submissions || [];
+                    filteredSubmissions = [...allSubmissions];
+                    updateTable();
+                    updateStats();
+                } else {
+                    showError('데이터를 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                showError('서버 연결 오류가 발생했습니다.');
+            }
+        }
+
+        // 테이블 업데이트
+        function updateTable() {
+            const tbody = document.getElementById('submissionsTableBody');
+            
+            if (filteredSubmissions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">📝 제출된 데이터가 없습니다.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filteredSubmissions.map(submission => {
+                const stage = submission.ai_stage || 0;
+                const stageClass = stage === 0 ? 'stage-unknown' : `stage-${stage}`;
+                const stageText = stage === 0 ? '미평가' : `${stage}단계`;
+                
+                const submitTime = new Date(submission.submit_time).toLocaleString('ko-KR');
+                const originalPreview = (submission.ocr_text || '').substring(0, 30) + '...';
+                const revisedPreview = (submission.revised_text || '').substring(0, 30) + '...';
+                
+                return `
+                    <tr>
+                        <td><strong>${submission.student_id}</strong></td>
+                        <td class="timestamp">${submitTime}</td>
+                        <td><span class="stage-badge ${stageClass}">${stageText}</span></td>
+                        <td title="${submission.ocr_text || ''}">${originalPreview}</td>
+                        <td title="${submission.revised_text || ''}">${revisedPreview}</td>
+                        <td><button class="detail-btn" onclick="showDetail(${submission.id})">상세 보기</button></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 통계 업데이트
+        function updateStats() {
+            const totalSubmissions = filteredSubmissions.length;
+            const uniqueStudents = new Set(filteredSubmissions.map(s => s.student_id)).size;
+            
+            // 평균 단계 계산 (평가된 것만)
+            const evaluatedSubmissions = filteredSubmissions.filter(s => s.ai_stage > 0);
+            const averageStage = evaluatedSubmissions.length > 0 
+                ? (evaluatedSubmissions.reduce((sum, s) => sum + s.ai_stage, 0) / evaluatedSubmissions.length).toFixed(1)
+                : '0';
+            
+            // 오늘 제출 수
+            const today = new Date().toDateString();
+            const todaySubmissions = filteredSubmissions.filter(s => 
+                new Date(s.submit_time).toDateString() === today
+            ).length;
+            
+            document.getElementById('totalSubmissions').textContent = totalSubmissions;
+            document.getElementById('uniqueStudents').textContent = uniqueStudents;
+            document.getElementById('averageStage').textContent = averageStage;
+            document.getElementById('todaySubmissions').textContent = todaySubmissions;
+        }
+
+        // 상세 보기
+        async function showDetail(submissionId) {
+            try {
+                const response = await fetch(`${API_BASE}/submission/${submissionId}`);
+                const submission = await response.json();
+                
+                if (response.ok) {
+                    const modalTitle = document.getElementById('modalTitle');
+                    const modalBody = document.getElementById('modalBody');
+                    
+                    modalTitle.textContent = `${submission.student_id}님의 제출 상세`;
+                    
+                    const stage = submission.ai_stage || 0;
+                    const stageText = stage === 0 ? '미평가' : `${stage}단계`;
+                    const stageClass = stage === 0 ? 'stage-unknown' : `stage-${stage}`;
+                    
+                    modalBody.innerHTML = `
+                        <div class="detail-section">
+                            <div class="detail-title">📋 제출 정보</div>
+                            <div class="detail-content">
+                                <p><strong>학생 ID:</strong> ${submission.student_id}</p>
+                                <p><strong>제출 시간:</strong> ${new Date(submission.submit_time).toLocaleString('ko-KR')}</p>
+                                <p><strong>AI 평가 단계:</strong> <span class="stage-badge ${stageClass}">${stageText}</span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <div class="detail-title">📝 원본 글 (OCR 추출)</div>
+                            <div class="detail-content">${submission.ocr_text || '(원본 글 없음)'}</div>
+                        </div>
+                        
+                        ${submission.ai_feedback ? `
+                        <div class="detail-section">
+                            <div class="detail-title">🤖 AI 피드백</div>
+                            <div class="detail-content">${submission.ai_feedback}</div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="detail-section">
+                            <div class="detail-title">✏️ 수정된 글</div>
+                            <div class="detail-content">${submission.revised_text || '(수정된 글 없음)'}</div>
+                        </div>
+                        
+                        ${submission.ai_evaluation ? `
+                        <div class="detail-section">
+                            <div class="detail-title">🎯 AI 최종 평가</div>
+                            <div class="detail-content">${submission.ai_evaluation}</div>
+                        </div>
+                        ` : ''}
+                    `;
+                    
+                    document.getElementById('detailModal').style.display = 'block';
+                } else {
+                    alert('상세 정보를 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                alert('서버 연결 오류가 발생했습니다.');
+            }
+        }
+
+        // 검색 기능
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                filteredSubmissions = [...allSubmissions];
+            } else {
+                filteredSubmissions = allSubmissions.filter(submission => 
+                    submission.student_id.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            updateTable();
+            updateStats();
+        });
+
+        // 새로고침 버튼
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            loadSubmissions();
+        });
+
+        // 데이터 내보내기
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            if (filteredSubmissions.length === 0) {
+                alert('내보낼 데이터가 없습니다.');
+                return;
+            }
+            
+            const csvData = convertToCSV(filteredSubmissions);
+            downloadCSV(csvData, 'submissions.csv');
+        });
+
+        // CSV 변환
+        function convertToCSV(data) {
+            const headers = ['학생ID', '제출시간', 'AI단계', '원본글', '수정된글', 'AI피드백', 'AI평가'];
+            const rows = data.map(item => [
+                item.student_id,
+                new Date(item.submit_time).toLocaleString('ko-KR'),
+                item.ai_stage || '미평가',
+                (item.ocr_text || '').replace(/"/g, '""'),
+                (item.revised_text || '').replace(/"/g, '""'),
+                (item.ai_feedback || '').replace(/"/g, '""'),
+                (item.ai_evaluation || '').replace(/"/g, '""')
+            ]);
+            
+            const csvContent = [headers, ...rows]
+                .map(row => row.map(field => `"${field}"`).join(','))
+                .join('\n');
+            
+            return '\uFEFF' + csvContent; // UTF-8 BOM 추가
+        }
+
+        // CSV 다운로드
+        function downloadCSV(csvData, filename) {
+            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // 오류 표시
+        function showError(message) {
+            const tbody = document.getElementById('submissionsTableBody');
+            tbody.innerHTML = `<tr><td colspan="6" class="no-data">❌ ${message}</td></tr>`;
+        }
+
+        // 모달 닫기
+        document.querySelector('.close').addEventListener('click', function() {
+            document.getElementById('detailModal').style.display = 'none';
+        });
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('detailModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 
