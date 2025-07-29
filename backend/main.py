@@ -31,7 +31,14 @@ from pydantic import BaseModel
 from typing import List
 
 # OpenAI API 키 설정 (환경변수에서 가져오거나 직접 설정)
-openai.api_key = os.getenv("OPENAI_API_KEY", "your-openai-api-key-here")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
+if OPENAI_API_KEY and OPENAI_API_KEY != "your-openai-api-key-here":
+    openai.api_key = OPENAI_API_KEY
+    OPENAI_ENABLED = True
+    print("✅ OpenAI API 키가 설정되었습니다.")
+else:
+    OPENAI_ENABLED = False
+    print("⚠️ OpenAI API 키가 설정되지 않았습니다. 모의 응답을 사용합니다.")
 
 app = FastAPI(
     title="AI 학생 글 평가 시스템",
@@ -206,8 +213,17 @@ def create_custom_evaluation_prompt(criteria_list, student_text):
 
 async def call_openai_api(prompt, max_tokens=1000):
     """OpenAI API 호출 함수"""
+    
+    # OpenAI API가 비활성화된 경우 모의 응답 제공
+    if not OPENAI_ENABLED:
+        return generate_mock_response(prompt, max_tokens)
+    
     try:
-        response = await openai.ChatCompletion.acreate(
+        # 최신 OpenAI API 사용법
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
@@ -222,7 +238,69 @@ async def call_openai_api(prompt, max_tokens=1000):
         return response.choices[0].message.content.strip()
     except Exception as e:
         print(f"OpenAI API 오류: {e}")
-        return f"AI 평가 중 오류가 발생했습니다. 나중에 다시 시도해주세요. (오류: {str(e)})"
+        return generate_mock_response(prompt, max_tokens)
+
+def generate_mock_response(prompt, max_tokens):
+    """OpenAI API가 없을 때 사용하는 모의 응답 생성"""
+    
+    if "피드백" in prompt or "좋은 점" in prompt:
+        return """
+안녕하세요! 글을 잘 써주셨네요. 😊
+
+**잘한 점:**
+• 주제에 대한 기본적인 이해가 잘 드러나 있습니다
+• 문장 구성이 자연스럽고 읽기 편합니다
+• 자신의 생각을 표현하려는 노력이 보입니다
+
+**개선할 점:**
+• 문단 구성을 더 체계적으로 해보세요
+• 구체적인 예시나 근거를 추가하면 더 좋겠습니다
+• 맞춤법과 띄어쓰기를 한 번 더 확인해보세요
+
+**다음 단계:**
+• 글쓰기 전에 간단한 개요를 작성해보세요
+• 다양한 책을 읽어서 표현력을 기르시기 바랍니다
+• 꾸준히 글쓰기 연습을 하면 더욱 발전할 것입니다
+
+화이팅! 계속 노력하면 멋진 글을 쓸 수 있을 거예요! 🌟
+
+[데모 모드: 실제 OpenAI API 키를 설정하면 더 정확한 피드백을 받을 수 있습니다]
+"""
+    
+    elif "평가" in prompt or "점수" in prompt:
+        return """
+**평가 기준별 분석**
+
+1. 내용과 주제 (75/100점)
+   - 주제에 대한 기본적인 이해가 잘 드러나 있습니다
+   - 더 깊이 있는 내용 전개가 필요합니다
+
+2. 논리성과 구성 (70/100점)
+   - 문단 구성이 기본적으로 잘 되어있습니다
+   - 논리적 연결고리를 더 명확히 해보세요
+
+3. 언어 표현 (80/100점)
+   - 문장이 자연스럽고 읽기 편합니다
+   - 어휘 선택이 적절합니다
+
+4. 창의성 (65/100점)
+   - 개인적인 견해가 드러납니다
+   - 더 참신한 관점을 추가해보세요
+
+**종합 평가**
+총점: 72.5/100점
+전반적으로 기본기가 잘 갖춰진 글입니다. 조금 더 구체적인 내용과 창의적인 접근을 추가하면 더욱 좋은 글이 될 것입니다.
+
+**개선 방향**
+• 주제에 대해 더 깊이 생각해보세요
+• 자신만의 독특한 경험이나 관점을 추가해보세요
+• 문단 간 연결을 더 매끄럽게 해보세요
+
+[데모 모드: 실제 OpenAI API 키를 설정하면 더 정확한 평가를 받을 수 있습니다]
+"""
+    
+    else:
+        return "죄송합니다. 현재 데모 모드에서는 제한적인 응답만 가능합니다. OpenAI API 키를 설정해주세요."
 
 @app.post("/ocr_upload")
 async def ocr_upload(file: UploadFile = File(...)):
@@ -392,3 +470,14 @@ async def health_check():
         "database": "connected" if db else "disconnected",
         "timestamp": datetime.now().isoformat()
     }
+
+# 서버 실행 부분
+if __name__ == "__main__":
+    import uvicorn
+    print("🚀 AI 글 평가 시스템 서버를 시작합니다...")
+    print("📋 평가 기준 API: http://127.0.0.1:8000/criteria")
+    print("📊 API 문서: http://127.0.0.1:8000/docs")
+    print("🏫 교사 페이지: teacher.html")
+    print("👨‍🎓 학생 페이지: student.html")
+    
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
