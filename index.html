@@ -2,10 +2,78 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>AI 학생 글 평가 시스템</title>
+    <title>AI 학생 글 평가 시스템 - 테스트</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+        input, button, textarea { margin: 8px 0; width: 100%; }
+        .result { background: #f8f8f8; padding: 10px; border-radius: 5px; margin-top: 10px; }
+    </style>
 </head>
 <body>
-    <h1>gh_pages 퍼블리싱 테스트</h1>
-    <p>이 페이지는 gh_pages 브랜치에서 배포됩니다.</p>
+    <h1>AI 학생 글 평가 시스템<br>테스트 페이지</h1>
+
+    <h2>1. 사진 업로드 & OCR</h2>
+    <form id="ocrForm">
+        <input type="file" id="ocrFile" accept=".jpg,.jpeg,.png" required><br>
+        <button type="submit">OCR 추출</button>
+    </form>
+    <div id="ocrResult" class="result"></div>
+
+    <h2>2. AI 피드백 생성</h2>
+    <textarea id="aiText" rows="5" placeholder="학생 글을 입력하세요..."></textarea><br>
+    <button id="aiBtn">AI 피드백 요청</button>
+    <div id="aiResult" class="result"></div>
+
+    <script>
+    // OCR 업로드
+    document.getElementById('ocrForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const file = document.getElementById('ocrFile').files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        document.getElementById('ocrResult').innerText = '처리 중...';
+        try {
+            const res = await fetch('http://127.0.0.1:8000/ocr_upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('ocrResult').innerText = data.ocr_text || '(텍스트 없음)';
+                document.getElementById('aiText').value = data.ocr_text || '';
+            } else {
+                document.getElementById('ocrResult').innerText = data.detail || '오류';
+            }
+        } catch (err) {
+            document.getElementById('ocrResult').innerText = '서버 연결 오류';
+        }
+    };
+
+    // AI 피드백
+    document.getElementById('aiBtn').onclick = async function() {
+        const text = document.getElementById('aiText').value;
+        if (!text.trim()) {
+            document.getElementById('aiResult').innerText = '텍스트를 입력하세요.';
+            return;
+        }
+        document.getElementById('aiResult').innerText = 'AI 피드백 생성 중...';
+        try {
+            const res = await fetch('http://127.0.0.1:8000/ai_feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('aiResult').innerText = data.feedback || '(결과 없음)';
+            } else {
+                document.getElementById('aiResult').innerText = data.detail || '오류';
+            }
+        } catch (err) {
+            document.getElementById('aiResult').innerText = '서버 연결 오류';
+        }
+    };
+    </script>
 </body>
 </html> 
