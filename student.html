@@ -313,7 +313,8 @@
             originalText: '',
             revisedText: '',
             aiFeedback: '',
-            aiEvaluation: ''
+            aiEvaluation: '',
+            submissionId: null
         };
 
         // 진행 상황 업데이트
@@ -454,6 +455,7 @@
                 showLoading('submitLoading', false);
                 
                 if (response.ok) {
+                    currentData.submissionId = data.submission_id;
                     showResult('submitResult', `✅ ${data.message}<br>제출 ID: ${data.submission_id}`, 'success');
                     
                     updateProgress(3, 'completed');
@@ -478,7 +480,10 @@
                 const response = await fetch(`${API_BASE}/ai_evaluate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: currentData.revisedText })
+                    body: JSON.stringify({ 
+                        text: currentData.revisedText,
+                        submission_id: currentData.submissionId
+                    })
                 });
                 
                 const data = await response.json();
